@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual Environment
+venv/
+.env
+
+# Database
+*.db
+*.sqlite3
+
+# Uploads
+backend/app/uploads/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Logs
+*.log
+
+# Build
+dist/
+build/
+
+# Node
+node_modules/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Pytest
+.pytest_cache/
