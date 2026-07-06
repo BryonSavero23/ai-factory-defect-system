@@ -7,6 +7,7 @@ from app.services.cv_service import predict_defect
 from app.services.qdn_service import evaluate_qdn_requirement
 from app.db.database import get_session
 from app.db.models import Inspection, QDNRecord
+from app.schemas.prediction import PredictionResponse
 
 router = APIRouter(
     prefix="/predict",
@@ -16,7 +17,7 @@ router = APIRouter(
 UPLOAD_DIR = "app/uploads"
 
 
-@router.post("/")
+@router.post("/", response_model=PredictionResponse)
 async def predict_image(
     file: UploadFile = File(...),
     lot_id: str = Form(...),

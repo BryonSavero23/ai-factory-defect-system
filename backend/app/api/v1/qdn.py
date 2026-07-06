@@ -1,8 +1,10 @@
+from typing import List
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
 from app.db.database import get_session
 from app.db.models import QDNRecord
+from app.schemas.qdn import QDNRead
 
 router = APIRouter(
     prefix="/qdn",
@@ -10,7 +12,7 @@ router = APIRouter(
 )
 
 
-@router.get("/")
+@router.get("/", response_model=List[QDNRead])
 def get_qdn_records(session: Session = Depends(get_session)):
     statement = select(QDNRecord).order_by(QDNRecord.created_at.desc())
     qdn_records = session.exec(statement).all()
