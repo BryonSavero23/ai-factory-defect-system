@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import prediction, inspections, qdn, dashboard
+from app.api.v1 import prediction, inspections, qdn, dashboard
 from app.db.database import create_db_and_tables
 
 app = FastAPI(
@@ -13,14 +13,16 @@ def on_startup():
     create_db_and_tables()
 
 
-app.include_router(prediction.router)
-app.include_router(inspections.router)
-app.include_router(qdn.router)
-app.include_router(dashboard.router)
+app.include_router(prediction.router, prefix="/api/v1")
+app.include_router(inspections.router, prefix="/api/v1")
+app.include_router(qdn.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")
 
 
 @app.get("/")
 def home():
     return {
-        "message": "AI Factory Defect Detection API is running"
+        "message": "AI Factory Defect Detection API is running",
+        "docs": "/docs",
+        "api_version": "v1"
     }
