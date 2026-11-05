@@ -40,7 +40,10 @@ The system is designed around manufacturing use cases such as:
 The Vercel configuration at the repository root builds the React/Vite app from
 `frontend/`, publishes `frontend/dist`, and rewrites requests to the SPA entry
 point. Import the repository into Vercel with the repository root as the project
-root; the configured install and build commands handle the frontend subdirectory.
+root (**Root Directory** should be `.` or blank, not `frontend`); the configured
+install and build commands enter the frontend subdirectory. The root-level
+configuration uses repository-relative paths, so setting `frontend` as the
+Vercel Root Directory makes the install/build paths incorrect.
 
 Add these frontend variables in **Vercel → Project → Settings → Environment
 Variables** (then redeploy so Vite can include them in the build):
