@@ -63,6 +63,25 @@ provided by this Vercel deployment. To connect a separately hosted API, set its
 the deployed Vercel origin (and any local development origins that are needed),
 for example `https://your-project.vercel.app,http://localhost:5173`.
 
+### Deploy the API on Render
+
+The root `render.yaml` Blueprint deploys the FastAPI service from `backend/`.
+In Render, create a new Blueprint from this repository and provide
+`FRONTEND_ORIGINS` when prompted, using your Vercel production origin (for
+example, `https://your-project.vercel.app`). After Render finishes deploying,
+copy the service URL, such as `https://ai-factory-defect-api.onrender.com`.
+
+In the Vercel frontend project's environment variables, set
+`VITE_API_URL` to that service URL and `VITE_DEMO_MODE` to `false`, then
+redeploy. The frontend will use the API when reachable and retain its labeled
+fallback if it becomes unavailable.
+
+Render uses the lean `backend/requirements-render.txt` because the current
+prediction implementation is a random mock and does not load the heavyweight
+computer-vision packages in `backend/requirements.txt`. The service currently
+stores data in a local SQLite file, which is not durable across ephemeral
+hosting restarts; the API does not yet run trained image inference.
+
 ## Current Features
 
 - FastAPI backend setup
