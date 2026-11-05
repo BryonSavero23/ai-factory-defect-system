@@ -40,10 +40,13 @@ type Summary = {
 type DefectItem = { defect_type: string; count: number }
 type MachineItem = { machine_id: string; inspection_count: number }
 type InspectionResponse = {
+  message?: string
   inspection_id: number
   lot_id: string
   machine_id: string
+  image_path?: string
   prediction: {
+    filename?: string
     defect_type: string
     confidence: number
     status: string
@@ -53,9 +56,15 @@ type InspectionResponse = {
     containment_status: string
     reason: string
   }
+  qdn_record_id?: number | null
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8000' : '')
+).replace(/\/+$/, '')
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !API_BASE_URL
 const ROUTES = {
   summary: ['/api/v1/dashboard/summary', '/api/dashboard/summary', '/dashboard/summary'],
   defects: ['/api/v1/dashboard/defect-breakdown', '/api/dashboard/defect-breakdown', '/dashboard/defect-breakdown'],
@@ -92,12 +101,47 @@ const MOCK_MACHINES: MachineItem[] = [
 const DEFECT_COLORS = ['#f7904b', '#e9bd57', '#ae8bf5', '#55b9a2', '#72819a']
 const numberFormat = new Intl.NumberFormat('en-US')
 
+function createMockInspection(file: File, lotNumber: string, machineId: string): InspectionResponse {
+  const inspectionId = Date.now()
+  return {
+    message: 'Simulated demo inspection; no image inference was performed.',
+    inspection_id: inspectionId,
+    lot_id: lotNumber,
+    machine_id: machineId,
+    image_path: file.name,
+    prediction: {
+      filename: file.name,
+      defect_type: 'surface_scratch',
+      confidence: 0.94,
+      status: 'DEFECT',
+    },
+    qdn: {
+      qdn_required: true,
+      containment_status: 'LOT_ON_HOLD',
+      reason: 'Detected surface_scratch with confidence 0.94',
+    },
+    qdn_record_id: inspectionId + 1,
+  }
+}
+
+function isApiUnavailable(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false
+  const status = error.response?.status
+  return (
+    !error.response ||
+    status === 404 ||
+    status === 405 ||
+    status === 408 ||
+    (status !== undefined && status >= 500)
+  )
+}
+
 async function getFromRoutes<T>(routes: string[]): Promise<T> {
   let lastError: unknown
 
   for (const route of routes) {
     try {
-      const response = await axios.get<T>(`${API_BASE_URL}${route}`)
+      const response = await axios.get<T>(`${API_BASE_URL}${route}`, { timeout: 5000 })
       return response.data
     } catch (error) {
       lastError = error
@@ -124,14 +168,15 @@ function App() {
   const [summary, setSummary] = useState(MOCK_SUMMARY)
   const [defects, setDefects] = useState(MOCK_DEFECTS)
   const [machines, setMachines] = useState(MOCK_MACHINES)
-  const [loading, setLoading] = useState(true)
-  const [usingMockData, setUsingMockData] = useState(true)
+  const [loading, setLoading] = useState(!DEMO_MODE)
+  const [usingMockData, setUsingMockData] = useState(DEMO_MODE)
   const [refreshing, setRefreshing] = useState(false)
   const [lotNumber, setLotNumber] = useState('')
   const [machineId, setMachineId] = useState('')
   const [image, setImage] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [inspection, setInspection] = useState<InspectionResponse | null>(null)
+  const [inspectionIsMock, setInspectionIsMock] = useState(false)
   const [inspectionError, setInspectionError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -141,6 +186,16 @@ function App() {
   }, [previewUrl])
 
   async function loadDashboard(showRefreshIndicator = true) {
+    if (DEMO_MODE) {
+      setSummary(MOCK_SUMMARY)
+      setDefects(MOCK_DEFECTS)
+      setMachines(MOCK_MACHINES)
+      setUsingMockData(true)
+      setLoading(false)
+      setRefreshing(false)
+      return
+    }
+
     if (showRefreshIndicator) setRefreshing(true)
     const [summaryResult, defectsResult, machinesResult] = await Promise.allSettled([
       getFromRoutes<Summary>(ROUTES.summary),
@@ -175,6 +230,15 @@ function App() {
     setSubmitting(true)
     setInspectionError('')
     setInspection(null)
+    setInspectionIsMock(false)
+
+    if (DEMO_MODE) {
+      setInspection(createMockInspection(image, lotNumber, machineId))
+      setInspectionIsMock(true)
+      setUsingMockData(true)
+      setSubmitting(false)
+      return
+    }
 
     let lastError: unknown
     for (const route of ROUTES.inspection) {
@@ -188,8 +252,10 @@ function App() {
         const response = await axios.post<InspectionResponse>(
           `${API_BASE_URL}${route}`,
           formData,
+          { timeout: 5000 },
         )
         setInspection(response.data)
+        setInspectionIsMock(false)
         void loadDashboard()
         setSubmitting(false)
         return
@@ -200,7 +266,12 @@ function App() {
       }
     }
 
-    setInspectionError(getErrorMessage(lastError))
+    if (isApiUnavailable(lastError)) {
+      setInspection(createMockInspection(image, lotNumber, machineId))
+      setInspectionIsMock(true)
+    } else {
+      setInspectionError(getErrorMessage(lastError))
+    }
     setSubmitting(false)
   }
 
@@ -223,7 +294,7 @@ function App() {
         <div className="sidebar-bottom">
           <span className="live-dot" />
           <span>Quality system</span>
-          <span className="online-label">LIVE</span>
+          <span className="online-label">{usingMockData ? 'DEMO' : 'LIVE'}</span>
         </div>
       </aside>
 
@@ -231,7 +302,7 @@ function App() {
         <header className="topbar">
           <div className="breadcrumb"><span>Workspace</span><span className="crumb-slash">/</span> Quality overview</div>
           <div className="topbar-right">
-            <span className="environment-tag"><span className="live-dot" /> Production floor</span>
+            <span className="environment-tag"><span className={usingMockData ? 'demo-dot' : 'live-dot'} /> {usingMockData ? 'Demo mode' : 'Production floor'}</span>
             <div className="avatar" aria-label="Quality team">QT</div>
           </div>
         </header>
@@ -252,8 +323,10 @@ function App() {
           {usingMockData && !loading && (
             <div className="demo-notice" role="status">
               <span className="demo-dot" />
-              Demo data shown for any metric unavailable from the API.
-              <span className="demo-api">API: {API_BASE_URL}</span>
+              {DEMO_MODE
+                ? 'Demo mode is on. Dashboard metrics and inspection results are simulated.'
+                : 'The API is unavailable. Demo data is shown for dashboard metrics and inspections.'}
+              {API_BASE_URL && <span className="demo-api">API: {API_BASE_URL}</span>}
             </div>
           )}
 
@@ -356,7 +429,7 @@ function App() {
               {inspection && (
                 <div className="inspection-result" role="status">
                   <div className="result-header">
-                    <div className="result-title"><CheckCircle2 size={17} /> Inspection complete <span>#{inspection.inspection_id}</span></div>
+                    <div className="result-title"><CheckCircle2 size={17} /> Inspection complete <span>#{inspection.inspection_id}</span>{inspectionIsMock && <span className="demo-result-tag">SIMULATED</span>}</div>
                     <span className={inspection.prediction.status === 'DEFECT' ? 'result-status defect' : 'result-status pass'}>
                       {inspection.prediction.status}
                     </span>
@@ -407,7 +480,7 @@ function App() {
           <section className="analytics-section" id="analytics">
             <div className="analytics-heading">
               <div><div className="section-kicker">PRODUCTION INSIGHTS</div><h2>Inspection analytics</h2></div>
-              <span className="chart-caption"><span className="live-dot" /> Live data</span>
+              <span className="chart-caption"><span className={usingMockData ? 'demo-dot' : 'live-dot'} /> {usingMockData ? 'Demo data' : 'Live data'}</span>
             </div>
             <div className="charts-grid">
               <article className="panel chart-panel">
