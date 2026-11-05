@@ -37,13 +37,10 @@ The system is designed around manufacturing use cases such as:
 
 ## Vercel deployment
 
-The Vercel configuration at the repository root builds the React/Vite app from
-`frontend/`, publishes `frontend/dist`, and rewrites requests to the SPA entry
-point. Import the repository into Vercel with the repository root as the project
-root (**Root Directory** should be `.` or blank, not `frontend`); the configured
-install and build commands enter the frontend subdirectory. The root-level
-configuration uses repository-relative paths, so setting `frontend` as the
-Vercel Root Directory makes the install/build paths incorrect.
+The Vercel configuration builds the React/Vite app and publishes `dist`.
+Configure Vercel's **Root Directory** as `frontend` so it installs from
+`frontend/package-lock.json` and runs the frontend build scripts in the correct
+working directory.
 
 Add these frontend variables in **Vercel → Project → Settings → Environment
 Variables** (then redeploy so Vite can include them in the build):
