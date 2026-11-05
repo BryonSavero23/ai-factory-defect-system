@@ -65,11 +65,12 @@ for example `https://your-project.vercel.app,http://localhost:5173`.
 
 ### Deploy the API on Render
 
-The root `render.yaml` Blueprint deploys the FastAPI service from `backend/`.
-In Render, create a new Blueprint from this repository and provide
-`FRONTEND_ORIGINS` when prompted, using your Vercel production origin (for
-example, `https://your-project.vercel.app`). After Render finishes deploying,
-copy the service URL, such as `https://ai-factory-defect-api.onrender.com`.
+The root `render.yaml` Blueprint deploys the FastAPI service from `backend/`
+and allows the current Vercel origin,
+`https://frontend-seven-alpha-89.vercel.app`. If you use another Vercel domain,
+update `FRONTEND_ORIGINS` in Render to that origin (domain only, no path).
+After Render finishes deploying, copy the service URL, such as
+`https://ai-factory-defect-api.onrender.com`.
 
 In the Vercel frontend project's environment variables, set
 `VITE_API_URL` to that service URL and `VITE_DEMO_MODE` to `false`, then

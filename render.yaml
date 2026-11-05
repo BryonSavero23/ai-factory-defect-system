@@ -9,4 +9,4 @@ services:
     healthCheckPath: /
     envVars:
       - key: FRONTEND_ORIGINS
-        sync: false
+        value: https://frontend-seven-alpha-89.vercel.app
